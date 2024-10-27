@@ -319,7 +319,11 @@ fun NotesListScreen(navController: NavHostController) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(filteredNotes.size) { index ->
                         val note = filteredNotes[index]
-                        NoteItem(note.title, note.description)
+                        NoteItem(note.title, note.description, onEdit = {
+                            navController.navigate("editNote/$index")
+                        }, onDelete = {
+                            notesList.removeAt(index)
+                        })
                     }
                 }
             }
@@ -381,7 +385,11 @@ fun TasksListScreen(navController: NavHostController) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(filteredTasks.size) { index ->
                         val task = filteredTasks[index]
-                        TaskItem(task.title, task.description)
+                        TaskItem(task.title, task.description, onEdit = {
+                            navController.navigate("editTask/$index")
+                        }, onDelete = {
+                            tasksList.removeAt(index)
+                        })
                     }
                 }
             }
@@ -390,19 +398,99 @@ fun TasksListScreen(navController: NavHostController) {
 }
 
 @Composable
-fun NoteItem(nota: String, descripcion: String) {
+fun NoteItem(nota: String, descripcion: String, onEdit: () -> Unit, onDelete: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.padding(8.dp)) {
-        Text(text = nota, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text(text = descripcion, fontSize = 14.sp, color = Color.Gray)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(text = nota, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(text = descripcion, fontSize = 14.sp, color = Color.Gray)
+            }
+            // IconButton para el menú de tres puntos dentro de un Box para evitar movimientos
+            Box {
+                IconButton(onClick = { expanded = !expanded }) {
+                    Image(
+                        painter = painterResource(id = R.drawable.icono_tres_puntos), // Reemplaza con el ID de tu icono
+                        contentDescription = "Opciones"
+                    )
+                }
+                // DropdownMenu que no afecta el layout al expandirse
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.wrapContentSize()
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Editar") },
+                        onClick = {
+                            expanded = false
+                            onEdit()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Eliminar") },
+                        onClick = {
+                            expanded = false
+                            onDelete()
+                        }
+                    )
+                }
+            }
+        }
         Divider(modifier = Modifier.padding(vertical = 8.dp))
     }
 }
 
 @Composable
-fun TaskItem(tarea: String, descripcion: String) {
+fun TaskItem(tarea: String, descripcion: String, onEdit: () -> Unit, onDelete: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.padding(8.dp)) {
-        Text(text = tarea, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text(text = descripcion, fontSize = 14.sp, color = Color.Gray)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(text = tarea, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(text = descripcion, fontSize = 14.sp, color = Color.Gray)
+            }
+            // IconButton para el menú de tres puntos dentro de un Box para evitar movimientos
+            Box {
+                IconButton(onClick = { expanded = !expanded }) {
+                    Image(
+                        painter = painterResource(id = R.drawable.icono_tres_puntos), // Reemplaza con el ID de tu icono
+                        contentDescription = "Opciones"
+                    )
+                }
+                // DropdownMenu que no afecta el layout al expandirse
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.wrapContentSize()
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Editar") },
+                        onClick = {
+                            expanded = false
+                            onEdit()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Eliminar") },
+                        onClick = {
+                            expanded = false
+                            onDelete()
+                        }
+                    )
+                }
+            }
+        }
         Divider(modifier = Modifier.padding(vertical = 8.dp))
     }
 }
@@ -415,6 +503,98 @@ fun Navigation(navController: NavHostController) {
         composable("tasksList") { TasksListScreen(navController) }
         composable("addNote") { AddNoteScreen(navController, isTask = false) }
         composable("addTask") { AddNoteScreen(navController, isTask = true) }
+        composable("editNote/{index}") { backStackEntry ->
+            val index = backStackEntry.arguments?.getString("index")?.toIntOrNull()
+            index?.let { EditNoteScreen(navController, it) }
+        }
+        composable("editTask/{index}") { backStackEntry ->
+            val index = backStackEntry.arguments?.getString("index")?.toIntOrNull()
+            index?.let { EditTaskScreen(navController, it) }
+        }
+    }
+}
+
+@Composable
+fun EditNoteScreen(navController: NavHostController, index: Int) {
+    var title by remember { mutableStateOf(TextFieldValue(notesList[index].title)) }
+    var description by remember { mutableStateOf(TextFieldValue(notesList[index].description)) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        TextField(
+            value = title,
+            onValueChange = { title = it },
+            placeholder = { Text(text = "Título") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+
+        TextField(
+            value = description,
+            onValueChange = { description = it },
+            placeholder = { Text(text = "Descripción") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                notesList[index] = notesList[index].copy(title = title.text, description = description.text)
+                navController.navigate("notesList")
+            },
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Text(text = "Guardar Cambios")
+        }
+    }
+}
+
+@Composable
+fun EditTaskScreen(navController: NavHostController, index: Int) {
+    var title by remember { mutableStateOf(TextFieldValue(tasksList[index].title)) }
+    var description by remember { mutableStateOf(TextFieldValue(tasksList[index].description)) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        TextField(
+            value = title,
+            onValueChange = { title = it },
+            placeholder = { Text(text = "Título") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+
+        TextField(
+            value = description,
+            onValueChange = { description = it },
+            placeholder = { Text(text = "Descripción") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                tasksList[index] = tasksList[index].copy(title = title.text, description = description.text)
+                navController.navigate("tasksList")
+            },
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Text(text = "Guardar Cambios")
+        }
     }
 }
 
